@@ -44,9 +44,32 @@ kotlin {
         }
     }
 
-    iosArm64 { binaries { framework { baseName = "ktmidi" } } }
-    iosX64 { binaries { framework { baseName = "ktmidi" } } }
-    iosSimulatorArm64 { binaries {framework { baseName = "ktmidi" } } }
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach {
+        it.binaries {
+            framework {
+                baseName = "ktmidi"
+            }
+        }
+
+        it.compilations.getByName("main") {
+            @Suppress("UnusedPrivateMember")
+            val rtmidi by cinterops.creating {
+                defFile("src/iosMain/rtmidi/rtmidi.def")
+                includeDirs("src/iosMain/rtmidi/include")
+            }
+        }
+
+        it.binaries.all {
+            linkerOpts(
+                "-L$projectDir/src/iosMain/rtmidi/lib",
+                "-lrtmidi",
+            )
+        }
+    }
 
     macosArm64()
     macosX64()
@@ -77,12 +100,7 @@ kotlin {
                 implementation(libs.core.ktx)
             }
         }
-        val androidTest by getting {
-            dependencies {
-                implementation(kotlin("test-junit"))
-                implementation(libs.junit)
-            }
-        }
+
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test-junit"))
@@ -112,6 +130,13 @@ kotlin {
         val iosSimulatorArm64Test by getting
         val iosX64Main by getting
         val iosX64Test by getting
+
+        val iosMain by creating {
+            dependsOn(commonMain)
+            iosX64Main.dependsOn(this)
+            iosArm64Main.dependsOn(this)
+            iosSimulatorArm64Main.dependsOn(this)
+        }
     }
 }
 
